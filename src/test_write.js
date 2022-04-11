@@ -32,14 +32,11 @@ const web3Modal = new Web3Modal({
   theme: 'dark'
 })
 
-connect()
-
-
 function getRadicleRegistryContract () {
   return new Ethers.Contract(RadicleRegistry.address, RadicleRegistry.abi, provider)
 }
 
-async function connect () {
+export async function connect () {
   try {
     // connect and update provider, signer
     walletProvider = await web3Modal.connect()
@@ -68,6 +65,19 @@ async function connect () {
     // throw error so stops any flows (closes modal too)
     throw e
   }
+}
+
+// Disconnect the wallet
+export function disconnect () {
+
+  // clear so they can re-select from scratch
+  web3Modal.clearCachedProvider()
+  // manually clear walletconnect --- https://github.com/Web3Modal/web3modal/issues/354
+  localStorage.removeItem('walletconnect')
+
+  signOut()
+  setupFallbackProvider()
+  signer = null
 }
 
 function listenToWalletProvider () {
@@ -106,19 +116,6 @@ function signIn (signInAddress) {
 
 function signOut () {
   address = null
-}
-
-// Disconnect the wallet
-function disconnect () {
-
-  // clear so they can re-select from scratch
-  web3Modal.clearCachedProvider()
-  // manually clear walletconnect --- https://github.com/Web3Modal/web3modal/issues/354
-  localStorage.removeItem('walletconnect')
-
-  signOut()
-  setupFallbackProvider()
-  signer = null
 }
 
 async function setupFallbackProvider () {

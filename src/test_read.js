@@ -1,4 +1,4 @@
-import api, { queryProjectMeta, queryProject, queryDripsConfigByID, querySplitsBySender, querySplitsByReceiver, queryDripsByReceiver } from './src/api.js'
+import api, { queryProjectMeta, queryProject, queryDripsConfigByID, querySplitsBySender, querySplitsByReceiver, queryDripsByReceiver } from './api.js'
 
 console.log("Hello World Read")
 
