@@ -5,6 +5,7 @@ dist-ssr
 *.local
 debug.log
 .idea
+.parcel-cache
 
 *notes
 
