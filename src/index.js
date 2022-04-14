@@ -1,9 +1,21 @@
 import { ethers as Ethers, BigNumber as bn } from 'ethers'
+import { deploy, RadicleRegistry, DAI, DripsToken, DaiDripsHub } from '../contracts'
 
 export class DripsClient {
   constructor(provider) {
     this.provider = provider
-    let signer, walletProvider, address, networkId
+    this.signer = undefined
+    this.walletProvider = undefined
+    this.address = undefined
+    this.networkId = undefined
+  }
+
+  getAddress () {
+    return this.address
+  }
+
+  getNetworkId () {
+    return this.networkId
   }
 
   getRadicleRegistryContract () {
@@ -11,32 +23,32 @@ export class DripsClient {
   }
 
   getProjectContract (address) {
-    return new Ethers.Contract(address, DripsToken.abi, provider)
+    return new Ethers.Contract(this.address, DripsToken.abi, this.provider)
   }
 
   getDAIContract () {
-    return new Ethers.Contract(DAI.address, DAI.abi, provider)
+    return new Ethers.Contract(DAI.address, DAI.abi, this.provider)
   }
 
   getHubContract () {
-    return new Ethers.Contract(DaiDripsHub.address, DaiDripsHub.abi, provider)
+    return new Ethers.Contract(DaiDripsHub.address, DaiDripsHub.abi, this.provider)
   }
 
   async connect () {
     try {
       // connect and update signer
-      signer = provider.getSigner()
+      this.signer = this.provider.getSigner()
 
       // set user address
-      let signerAddress = await signer.getAddress()
-      signIn(signerAddress)
+      let signerAddress = await this.signer.getAddress()
+      this.signIn(signerAddress)
 
       // set network id
-      await setNetworkId()
+      await this.setNetworkId()
 
-      listenToWalletProvider()
+      this.listenToWalletProvider()
 
-      console.log('connected to network ' + networkId + '!')
+      console.log('connected to network ' + this.networkId + '!')
 
       return true
     } catch (e) {
@@ -44,7 +56,7 @@ export class DripsClient {
       console.error('@connect', e)
 
       // clear wallet in case
-      disconnect()
+      this.disconnect()
 
       // throw error so stops any flows (closes modal too)
       throw e
@@ -53,23 +65,18 @@ export class DripsClient {
 
   // Disconnect the wallet
   disconnect () {
-    // clear so they can re-select from scratch
-    web3Modal.clearCachedProvider()
-    // manually clear walletconnect --- https://github.com/Web3Modal/web3modal/issues/354
-    localStorage.removeItem('walletconnect')
-
-    signOut()
-    setupFallbackProvider()
-    signer = null
+    this.signOut()
+    this.setupFallbackProvider()
+    this.signer = null
 
     console.log('disconnected from wallet')
   }
 
   listenToWalletProvider () {
-    if (!walletProvider?.on) return
+    if (!this.walletProvider?.on) return
 
     // account changed (or disconnected)
-    walletProvider.on('accountsChanged', accounts => {
+    this.walletProvider.on('accountsChanged', accounts => {
       console.log('accountsChanged', accounts)
       if (!accounts.length) {
         disconnect()
@@ -78,42 +85,44 @@ export class DripsClient {
     })
 
     // changed network
-    walletProvider.on('chainChanged', chainId => {
+    this.walletProvider.on('chainChanged', chainId => {
       console.log('network changed', chainId)
       // reload page so data is correct...
       window.location.reload()
     })
 
     // random disconnection? (doesn't fire on account disconnect)
-    walletProvider.on('disconnect', error => {
+    this.walletProvider.on('disconnect', error => {
       console.error('disconnected?', error)
       disconnect()
     })
   }
 
   async setNetworkId() {
-    networkId = (await provider.getNetwork()).chainId
+    this.networkId = (await this.provider.getNetwork()).chainId
   }
 
   signIn(signInAddress) {
-    address = signInAddress.toLowerCase()
+    this.address = signInAddress.toLowerCase()
+    console.log('setting address to ' + this.address)
   }
 
   signOut () {
-    address = null
+    this.address = null
+    this.networkId = null
+    console.log('signOut() called') 
   }
 
   async setupFallbackProvider () {
     try {
       if (window.ethereum) {
         // metamask/browser
-        provider = new Ethers.providers.Web3Provider(window.ethereum)
+        this.provider = new Ethers.providers.Web3Provider(window.ethereum)
       } else {
         // infura fallback
-        provider = new Ethers.getDefaultProvider(deployNetwork.infura)
+        this.provider = new Ethers.getDefaultProvider(deployNetwork.infura)
       }
-      // set network
-      await setNetworkId()
+
       return true
     } catch (e) {
       console.error(e)
@@ -122,17 +131,75 @@ export class DripsClient {
 
   async updateUserDrips (lastUpdate, lastBalance, currentReceivers, balanceDelta, newReceivers ) {
     try {
-      if (!signer) throw "Not connected to wallet"
+      if (!this.signer) throw "Not connected to wallet"
 
-      const contract = getHubContract()
-      const contractSigner = contract.connect(signer)
+      const contract = this.getHubContract()
+      const contractSigner = contract.connect(this.signer)
 
       // Send the tx to the contract
+      console.log('lastUpdate: ' + lastUpdate)
+      console.log('lastBalance: ' + lastBalance)
+      console.log('currentReceivers: ' + currentReceivers)
+      console.log('balanceDelta: ' + balanceDelta)
+      console.log('newReceivers: ' + newReceivers)
       return contractSigner['setDrips(uint64,uint128,(address,uint128)[],int128,(address,uint128)[])'](lastUpdate, lastBalance, currentReceivers, balanceDelta, newReceivers)
     } catch (e) {
       console.error(e)
       throw e
     }
   }
+
+  /* See how much DAI an address is allowed to spend on behalf of the signed-in user */
+  async getAllowance (spendingAddress) {
+    if (!address) throw "Must call connect() before calling getAllowance()"
+
+    const daiContract = getDAIContract()
+    return daiContract.allowance(this.address, spendingAddress)
+  }
+  
+  validateAddressInput = input => {
+    return new Promise((resolve, reject) => {
+      if (utils.isAddress(input)) {
+        return resolve(input)
+      }
+  
+      // !! not even ENS
+      if (!input.endsWith('.eth')) {
+        return reject(new Error(`"${input}" is neither an Ethereum address or ENS name (ends in .eth).`))
+      }
+      
+      // check ENS...
+      resolveENS(input)
+        .then(addr => {
+          if (!addr) {
+            reject(new Error(`"${input}" does not resolve to an Ethereum address`))
+          }
+          resolve(addr)
+        })
+        .catch(reject)
+    })
+  }
+
+  async resolveENS ({ state, commit, dispatch }, ens) {
+    // TODO -- get ENS resolution working again
+    /*
+    try {
+      // saved ?
+      let address = Object.keys(state.addresses).find(key => ens && state.addresses[key].ens === ens)
+      if (address) return address
+      // resolve...
+      if (!provider) await dispatch('init')
+      address = await provider.resolveName(ens)
+      if (address) {
+        // save if resolved...
+        commit('SAVE_ADDRESS', { address, ens })
+      }
+      return address
+    } catch (e) {
+      console.error(e)
+      return null
+    }*/
+  }
 }
+
 

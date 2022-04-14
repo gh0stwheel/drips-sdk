@@ -1,5 +1,4 @@
 import { BigNumber as bn, constants, utils } from 'ethers'
-import store from '@/store'
 
 export const oneMonth = 30 * 24 * 60 * 60
 
@@ -83,29 +82,6 @@ export const formatDrips = (drips) => {
     receiverWeights
   ]
   // "empty" drips = [0, []]
-}
-
-export const validateAddressInput = input => {
-  return new Promise((resolve, reject) => {
-    if (utils.isAddress(input)) {
-      return resolve(input)
-    }
-
-    // !! not even ENS
-    if (!input.endsWith('.eth')) {
-      return reject(new Error(`"${input}" is neither an Ethereum address or ENS name (ends in .eth).`))
-    }
-
-    // check ENS...
-    store.dispatch('resolveENS', input)
-      .then(addr => {
-        if (!addr) {
-          reject(new Error(`"${input}" does not resolve to an Ethereum address`))
-        }
-        resolve(addr)
-      })
-      .catch(reject)
-  })
 }
 
 /*

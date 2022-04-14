@@ -2,7 +2,28 @@ const apiUrl = "https://api.thegraph.com/subgraphs/name/gh0stwheel/drips-on-ethe
 
 const cacheAPISec = "3600" // string
 
-export default async function ({ query, variables }) {
+export async function getDripsBySender(address) {
+  const emptyConfig = {
+    balance: '0',
+    timestamp: '0',
+    receivers: [],
+    withdrawable: () => '0'
+  }
+  try {
+    // fetch...
+    const resp = await query({ query: queryDripsConfigByID, variables: { id: address } })
+    const config = resp.data?.dripsConfigs[0]
+    if (config) {
+      config.withdrawable = () => getDripsWithdrawable(config)
+    }
+    return config || emptyConfig
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
+
+export async function query( {query, variables} ) {
   const id = btoa(JSON.stringify({ query, variables }))
   try {
     if (!apiUrl) {
