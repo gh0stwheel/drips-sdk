@@ -1,4 +1,4 @@
-const apiUrl = "https://api.thegraph.com/subgraphs/name/gh0stwheel/drips-on-ethereum"
+const apiUrl = "https://api.thegraph.com/subgraphs/name/gh0stwheel/drips-on-rinkeby"
 
 const cacheAPISec = "3600" // string
 
@@ -12,6 +12,8 @@ export async function getDripsBySender(address) {
   try {
     // fetch...
     const resp = await query({ query: queryDripsConfigByID, variables: { id: address } })
+    console.log(apiUrl)
+    console.log('query response ' + JSON.stringify(resp))
     const config = resp.data?.dripsConfigs[0]
     if (config) {
       config.withdrawable = () => getDripsWithdrawable(config)
@@ -31,6 +33,7 @@ export async function query( {query, variables} ) {
     }
 
     // cached ?
+    /*
     let cached = sessionStorage.getItem(id)
     if (cached && cacheAPISec > 0) {
       cached = JSON.parse(cached)
@@ -39,9 +42,10 @@ export async function query( {query, variables} ) {
         // slightly delay response...
         return new Promise((resolve) => setTimeout(() => resolve(cached.data), 200))
       }
-    }
+    }*/
 
     // fetch new...
+    console.log('query --> ' + JSON.stringify({ query, variables }))
     const resp = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -54,9 +58,10 @@ export async function query( {query, variables} ) {
       const data = await resp.json()
 
       // cache resp?
+      /*
       if (cacheAPISec) {
         sessionStorage.setItem(id, JSON.stringify({ data, time: new Date().getTime() }))
-      }
+      }*/
 
       return data
     } else {

@@ -1,6 +1,6 @@
 import { DripsClient } from './index.js'
 import { getDripsBySender } from './api.js'
-import { toWei,toWeiPerSec } from './utils.js'
+import { toWei,toWeiPerSec,toDAI } from './utils.js'
 import { ethers as Ethers, BigNumber as bn } from 'ethers'
 import Web3Modal from 'web3modal'
 import WalletConnectProvider from '@walletconnect/web3-provider'
@@ -44,7 +44,7 @@ async function connect () {
     dripsClient = new DripsClient(provider);
     await dripsClient.connect()
   
-    displayAddressAndNetwork()
+    displayAddressNetworkAndApproval()
     displayUserDrips()
     
   } catch (e) {
@@ -63,14 +63,14 @@ function disconnect () {
     dripsClient.disconnect()
   }
 
-  displayAddressAndNetwork()
+  displayAddressNetworkAndApproval()
   displayUserDrips()
 }
 
-async function displayAddressAndNetwork () {
+async function displayAddressNetworkAndApproval () {
   console.log('in displayAddressAndNetwork')
   if (dripsClient) {
-    const addressDiv = document.getElementById('address');
+    const addressDiv = document.getElementById('address')
     let address = dripsClient.address;
     if (address) {
       addressDiv.textContent = 'Address: ' + address
@@ -78,12 +78,23 @@ async function displayAddressAndNetwork () {
       addressDiv.textContent = 'Address: [Not Connected]'
     }
     
-    const networkDiv = document.getElementById('network');
+    const networkDiv = document.getElementById('network')
     let network = dripsClient.networkId;
     if (network) {
-      networkDiv.textContent = 'Network: ' + getNetworkName(network);
+      networkDiv.textContent = 'Network: ' + getNetworkName(network)
     } else {
       networkDiv.textContent = 'Network: [Not Connected]'
+    }
+
+    const approvedDiv = document.getElementById('daiApproved')
+    let daiApproved = null
+    if (dripsClient && dripsClient.address) {
+      daiApproved = toDAI(await dripsClient.getAllowance(dripsClient.getHubContract().address))
+    }
+    if (daiApproved) {
+      approvedDiv.textContent = 'DAI Approved: ' + daiApproved
+    } else {
+      approvedDiv.textContent = 'DAI Approved: None Approved'
     }
   }
 }
@@ -92,11 +103,29 @@ async function displayUserDrips () {
   const div = document.getElementById('userDrips');
   if (dripsClient && dripsClient.address) {
     console.log(dripsClient.getAddress())
-    let userDripsJson = await getDripsBySender(dripsClient.getAddress())
+    let userDripsJson = await getDripsBySender(dripsClient.getAddress().toLowerCase())
     console.log(userDripsJson)
     div.textContent = JSON.stringify(userDripsJson);
   } else {
     div.textContent = ""
+  }
+}
+
+async function approveDAIContract () {
+  try {
+    if (!dripsClient) {
+      responseText.textContent = `Wallet must be connected before approving.`
+      throw 'Wallet not connected'
+    }
+
+    let transaction = await dripsClient.approveDAIContract()
+
+    // Wait for the transaction to confirm
+    responseText.textContent = 'Waiting for the transaction to be confirmed'
+    txReceipt = await transaction.wait()
+    responseText.textContent = `Address has been approved in DAI contract!`
+  } catch (e) {
+    console.error(e)
   }
 }
 
@@ -108,9 +137,10 @@ async function updateDripsWithInputs () {
     console.log('topUpDai -->' + topUpDai)
     const topUpWei = toWei(Number(topUpDai))
 
-    if (!dripsClient) throw 'Please connect the wallet first'
+    if (!dripsClient || !dripsClient.address) throw 'Please connect the wallet first'
 
     // check allowance if top-up
+    // TODO -- review all of this code and the prompts/messages
     if (topUpWei.gt(0)) {
       const allowance = await dripsClient.getAllowance(dripsClient.getAddress())
 
@@ -149,7 +179,7 @@ async function updateDripsWithInputs () {
     if (dripToAddressInput !== "" && dripToDAIInput !== "") {
       const dripToAddress = dripsClient.validateAddressInput(dripToAddressInput)
       const amtWeiPerSec = toWeiPerSec(dripToDAIInput)
-      newReceivers.push([dripToAddress, amtamtWeiPerSecPerSec])
+      newReceivers.push([dripToAddress, amtWeiPerSec])
     }
 
     /*
@@ -166,30 +196,28 @@ async function updateDripsWithInputs () {
     */
 
     // submit...
-    responseText.value = { message: 'Confirm the transaction in your wallet.' }
-    let tx
+    responseText.textContent = 'Confirm the transaction in your wallet.'
     let txReceipt
-
-    let txResponse = await dripsClient.updateUserDrips (
+    let transaction = await dripsClient.updateUserDrips (
       userDripsJson.timestamp,
       userDripsJson.balance,
       userDripsJson.receivers,
       topUpWei,
       newReceivers )
     
-    console.log('Waiting for the transaction to confirm...')
+    responseText.textContent = 'Waiting for the transaction to confirm for tx: ' + transaction
 
-    // wait for tx...
+    // Wait for tx...
     responseText.value = { message: 'Waiting for transaction confirmation...' }
-    txReceipt = await txResponse.wait()
+    txReceipt = await transaction.wait()
 
     console.log('Confirmed!')
 
-    // confirmed!
-    responseText.value = { status: 1, message: 'Confirmed! View your drips on your profile.' }
-    txResponse = null
+    // Confirmed!
+    responseText.textContent = 'Confirmed!'
 
-    // TODO -- refresh balance and Drips displays in the Gui
+    // Refresh drips config JSON
+    displayUserDrips()
 
   } catch (e) {
     console.log(e)
@@ -202,4 +230,5 @@ async function updateDripsWithInputs () {
 // Bind functions to buttons in example HTML
 document.querySelector("#connect").addEventListener('click', connect);
 document.querySelector("#disconnect").addEventListener('click', disconnect);
+document.querySelector("#approveDAIContract").addEventListener('click', approveDAIContract);
 document.querySelector("#updateUserDrips").addEventListener('click', updateDripsWithInputs);

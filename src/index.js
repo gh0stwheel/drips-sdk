@@ -1,4 +1,4 @@
-import { ethers as Ethers, BigNumber as bn } from 'ethers'
+import { ethers as Ethers, BigNumber as bn, utils } from 'ethers'
 import { deploy, RadicleRegistry, DAI, DripsToken, DaiDripsHub } from '../contracts'
 
 export class DripsClient {
@@ -49,6 +49,15 @@ export class DripsClient {
       this.listenToWalletProvider()
 
       console.log('connected to network ' + this.networkId + '!')
+
+      // get all events
+      console.log('---start---')
+      let events = await this.getHubContract().queryFilter('DripsUpdated(address,uint128,(address,uint128)[])')
+      // filter by my address
+      events = events.filter(event => event.args[0].toLowerCase() === "0x0630a42785B8A92205A492B3092279529990ED0C".toLowerCase())
+      console.log('timestamp ' + (await events[0].getBlock()).timestamp)
+      console.log(events)
+      console.log('---end---')
 
       return true
     } catch (e) {
@@ -129,6 +138,23 @@ export class DripsClient {
     }
   }
 
+  async approveDAIContract () {
+    try {
+      if (!this.signer) throw 'DripsClient must be connected before approving DAI'
+
+      const contract = new Ethers.Contract(DAI.address, DAI.abi, provider)
+      const contractSigner = contract.connect(this.signer)
+
+      // approve max amount
+      const amount = Ethers.constants.MaxUint256
+      const tx = await contractSigner.approve(DaiDripsHub.address, amount)
+      return tx
+    } catch (e) {
+      console.error('@approveDAIContract', e)
+      throw e
+    }
+  }
+
   async updateUserDrips (lastUpdate, lastBalance, currentReceivers, balanceDelta, newReceivers ) {
     try {
       if (!this.signer) throw "Not connected to wallet"
@@ -149,11 +175,11 @@ export class DripsClient {
     }
   }
 
-  /* See how much DAI an address is allowed to spend on behalf of the signed-in user */
+  // Check how much DAI an address is allowed to spend on behalf of the signed-in user
   async getAllowance (spendingAddress) {
     if (!address) throw "Must call connect() before calling getAllowance()"
-
-    const daiContract = getDAIContract()
+    
+    const daiContract = this.getDAIContract()
     return daiContract.allowance(this.address, spendingAddress)
   }
   
