@@ -2,23 +2,71 @@ const apiUrl = "https://api.thegraph.com/subgraphs/name/gh0stwheel/drips-on-rink
 
 const cacheAPISec = "3600" // string
 
-export async function getDripsBySender(address) {
-  const emptyConfig = {
-    balance: '0',
-    timestamp: '0',
-    receivers: [],
-    withdrawable: () => '0'
+export class DripsSubgraphClient {
+  constructor(apiUrl) {
+    this.apiUrl = apiUrl;
   }
-  try {
-    // fetch...
-    const resp = await query({ query: queryDripsConfigByID, variables: { id: address } })
-    console.log(apiUrl)
-    console.log('query response ' + JSON.stringify(resp))
-    const config = resp.data?.dripsConfigs[0]
-    if (config) {
-      config.withdrawable = () => getDripsWithdrawable(config)
+
+  async getDripsBySender(address) {
+    const emptyConfig = {
+      balance: '0',
+      timestamp: '0',
+      receivers: [],
+      withdrawable: () => '0'
     }
-    return config || emptyConfig
+    try {
+      // fetch...
+      const resp = await query({ query: queryDripsConfigByID, variables: { id: address } })
+      console.log(apiUrl)
+      console.log('query response ' + JSON.stringify(resp))
+      const config = resp.data?.dripsConfigs[0]
+      if (config) {
+        config.withdrawable = () => getDripsWithdrawable(config)
+      }
+      return config || emptyConfig
+    } catch (e) {
+      console.error(e)
+      throw e
+    }
+  }
+}
+
+export async function getDripsByReceiver (receiver) {
+  try {
+    const resp = await query({ query: queryDripsByReceiver, variables: { receiver, first: 100 } })
+    return resp.data?.dripsEntries || []
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
+
+export async function getSplitsBySender (sender) {
+  try {
+    const resp = await query({ query: querySplitsBySender, variables: { sender, first: 100 } })
+    let entries = resp.data?.splitsEntries || []
+    // format
+    entries = entries.map(entry => ({
+      ...entry,
+      percent: entry.weight / state.splitsFractionMax * 100
+    }))
+    return entries
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
+
+export async function getSplitsByReceiver (receiver) {
+  try {
+    const resp = await query({ query: querySplitsByReceiver, variables: { receiver, first: 100 } })
+    let entries = resp.data?.splitsEntries || []
+    // format
+    entries = entries.map(entry => ({
+      ...entry,
+      percent: entry.weight / state.splitsFractionMax * 100
+    }))
+    return entries
   } catch (e) {
     console.error(e)
     throw e

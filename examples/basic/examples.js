@@ -1,4 +1,4 @@
-import { DripsClient } from './index.js'
+import { DripsClient } from 'drips-sdk'
 import { getDripsBySender } from './api.js'
 import { toWei,toWeiPerSec,toDAI } from './utils.js'
 import { ethers as Ethers, BigNumber as bn } from 'ethers'
