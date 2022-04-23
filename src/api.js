@@ -11,7 +11,45 @@ export async function getDripsBySender(address) {
   }
   try {
     // fetch...
-    const resp = await query({ query: queryDripsConfigByID, variables: { id: address } })
+    const resp = await query({ query: queryDripsConfigByID, variables: { id : address } })
+    console.log(apiUrl)
+    console.log('query response ' + JSON.stringify(resp))
+    return resp.data?.dripsConfigs[0]
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
+
+export async function getDripsByReceiver(address) {
+  const emptyConfig = {
+    balance: '0',
+    timestamp: '0',
+    receivers: [],
+    withdrawable: () => '0'
+  }
+  try {
+    // fetch...
+    const resp = await query({ query: queryDripsByReceiver, variables: { receiver : address } })
+    console.log(apiUrl)
+    console.log('query response ' + JSON.stringify(resp))
+    return resp.data?.dripsEntries
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
+
+async function getDripsUsingQuery(queryKey, address, subgraphQuery) {
+  const emptyConfig = {
+    balance: '0',
+    timestamp: '0',
+    receivers: [],
+    withdrawable: () => '0'
+  }
+  try {
+    // fetch...
+    const resp = await query({ query: subgraphQuery, variables: { [queryKey]: address } })
     console.log(apiUrl)
     console.log('query response ' + JSON.stringify(resp))
     const config = resp.data?.dripsConfigs[0]

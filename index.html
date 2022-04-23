@@ -4,28 +4,67 @@
     <meta charset="utf-8"/>
     <title>Drips SDK Example in Parcel</title>
   </head>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    /* Create two equal columns that floats next to each other */
+    .column {
+      float: left;
+      width: 50%;
+      padding: 10px;
+      height: 300px; /* Should be removed. Only for demonstration */
+    }
+    
+    /* Clear floats after the columns */
+    .row:after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+    </style>
   <body>
-    <h1>Wallet/Network Details</h1>
-    <div id="address">Address: [Not Connected]</div>
-    <div id="network">Network: [Not Connected]</div>
-    <div id="daiApproved">DAI Approved: [None Approved]</div>
-    <p> </p>
-    <h1>DripsClient Example</h1>
-    <div id="responseText" style="color: red; padding-bottom: 20px;"></div>
-    <script type="module" src="src/examples.js"></script>
-    <button id="connect">Connect</button>
-    <button id= "disconnect">Disconnect</button>
-    <button id= "approveDAIContract">Approve DAI</button>
-    <button id= "updateUserDrips">Update Drips</button>
-    <p> </p>
+    <div class="row">
+      <div class="column">
+        <h1>DripsClient Example</h1>
+        <div id="responseText" style="color: red; padding-bottom: 20px;"></div>
+        <script type="module" src="src/examples.js"></script>
+        <button id="connect">Connect</button>
+        <button id= "disconnect">Disconnect</button>
+        <button id= "approveDAIContract">Approve DAI</button>
+        <button id= "updateUserDrips">Update Drips</button>
+        <p> </p>
+        <h2>Wallet/Network Details</h2>
+        <div id="address">Address: [Not Connected]</div>
+        <div id="network">Network: [Not Connected]</div>
+        <div id="daiApproved">DAI Approved: [None Approved]</div>
+        <p> </p>
+        <h2>New Drips Config Input</h2>
+        <div>Top-Up/Withdrawal: <input type="text" id="topUpDai" value="0"></div>
+        <div><p></p><h3>Drips Entries:</h3></div>
+        <div>1. Receiver Address: <input size="46" type="text" id="dripToAddress"> DAI: </input><input type="text" id="dripToDAI"></input></div>
+    
+        <h2>User's Current Drips JSON Records</h2>
+        <div id="userDripsJSON">[Please connect your wallet above]</div>
+        <div id="userSplitsJSON"></div>
+      </div>
+      <div class="column">
+        <h1>Subgraph Query Example</h1>
+        <div id="responseTextSubgraph" style="color: red; padding-bottom: 20px;"></div>
+        <div><button id="queryBySender">Query By Sender</button> <button id="queryByReceiver">Query By Receiver</button></div>
+        <p></p>
+        <div>Address: <input size="46" type="text" id="queryAddress"> </input></div>
 
-    <h1>New Drips Config Input</h1>
-    <div></div>Top-Up/Withdrawal: <input type="text" id="topUpDai" value="0">
-    <div><p></p><h3>Drips Entries:</h3></div>
-    <div></driv>1. Receiver Address: <input type="text" id="dripToAddress"> DAI: </input><input type="text" id="dripToDAI"></input></div>
 
-    <h1>User's Current Drips JSON Config</h1>
-    <div id="userDrips"></div>
+        <p> </p>
+    
+        <h2>Drips JSON Records</h2>
+        <div id="queryResponseEntityType"></div>
+        <div id="queryAddressDripsJSON">[Enter search address above]</div>
+        <div id="queryAddressSplitsJSON"></div>
+      </div>
+    </div>
   </body>
 </html>
 

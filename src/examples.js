@@ -1,5 +1,5 @@
 import { DripsClient } from './index.js'
-import { getDripsBySender } from './api.js'
+import { getDripsBySender, getDripsByReceiver } from './api.js'
 import { toWei,toWeiPerSec,toDAI } from './utils.js'
 import { ethers as Ethers, BigNumber as bn } from 'ethers'
 import Web3Modal from 'web3modal'
@@ -65,50 +65,6 @@ function disconnect () {
 
   displayAddressNetworkAndApproval()
   displayUserDrips()
-}
-
-async function displayAddressNetworkAndApproval () {
-  console.log('in displayAddressAndNetwork')
-  if (dripsClient) {
-    const addressDiv = document.getElementById('address')
-    let address = dripsClient.address;
-    if (address) {
-      addressDiv.textContent = 'Address: ' + address
-    } else {
-      addressDiv.textContent = 'Address: [Not Connected]'
-    }
-    
-    const networkDiv = document.getElementById('network')
-    let network = dripsClient.networkId;
-    if (network) {
-      networkDiv.textContent = 'Network: ' + getNetworkName(network)
-    } else {
-      networkDiv.textContent = 'Network: [Not Connected]'
-    }
-
-    const approvedDiv = document.getElementById('daiApproved')
-    let daiApproved = null
-    if (dripsClient && dripsClient.address) {
-      daiApproved = toDAI(await dripsClient.getAllowance(dripsClient.getHubContract().address))
-    }
-    if (daiApproved) {
-      approvedDiv.textContent = 'DAI Approved: ' + daiApproved
-    } else {
-      approvedDiv.textContent = 'DAI Approved: None Approved'
-    }
-  }
-}
-
-async function displayUserDrips () {
-  const div = document.getElementById('userDrips');
-  if (dripsClient && dripsClient.address) {
-    console.log(dripsClient.getAddress())
-    let userDripsJson = await getDripsBySender(dripsClient.getAddress().toLowerCase())
-    console.log(userDripsJson)
-    div.textContent = JSON.stringify(userDripsJson);
-  } else {
-    div.textContent = ""
-  }
 }
 
 async function approveDAIContract () {
@@ -226,9 +182,74 @@ async function updateDripsWithInputs () {
   }
 }
 
+async function displayAddressNetworkAndApproval () {
+  console.log('in displayAddressAndNetwork')
+  if (dripsClient) {
+    const addressDiv = document.getElementById('address')
+    let address = dripsClient.address;
+    if (address) {
+      addressDiv.textContent = 'Address: ' + address
+    } else {
+      addressDiv.textContent = 'Address: [Not Connected]'
+    }
+    
+    const networkDiv = document.getElementById('network')
+    let network = dripsClient.networkId;
+    if (network) {
+      networkDiv.textContent = 'Network: ' + getNetworkName(network)
+    } else {
+      networkDiv.textContent = 'Network: [Not Connected]'
+    }
+
+    const approvedDiv = document.getElementById('daiApproved')
+    let daiApproved = null
+    if (dripsClient && dripsClient.address) {
+      daiApproved = toDAI(await dripsClient.getAllowance(dripsClient.getHubContract().address))
+    }
+    if (daiApproved) {
+      approvedDiv.textContent = 'DAI Approved: ' + daiApproved
+    } else {
+      approvedDiv.textContent = 'DAI Approved: None Approved'
+    }
+  }
+}
+
+async function displayUserDrips () {
+  const div = document.getElementById('userDripsJSON');
+  if (dripsClient && dripsClient.address) {
+    console.log(dripsClient.getAddress())
+    let userDripsJson = await getDripsBySender(dripsClient.getAddress().toLowerCase())
+    console.log(userDripsJson)
+    div.textContent = JSON.stringify(userDripsJson);
+  } else {
+    div.textContent = ""
+  }
+}
+
+async function displayQueryBySenderDrips () {
+  displayDripsQueryResult("queryAddress",'queryAddressDripsJSON',getDripsBySender)
+}
+
+async function displayQueryByReceiverDrips () {
+  displayDripsQueryResult("queryAddress",'queryAddressDripsJSON',getDripsByReceiver)
+}
+
+async function displayDripsQueryResult (inputField, outputDivId, subgraphClientFunction) {
+  let queryAddressInput = document.getElementById(inputField).value
+
+  const div = document.getElementById(outputDivId);
+  if (queryAddressInput && queryAddressInput !== "") {
+    let userDripsJson = await subgraphClientFunction(queryAddressInput.toLowerCase())
+    div.textContent = JSON.stringify(userDripsJson);
+  } else {
+    div.textContent = ""
+  }
+}
 
 // Bind functions to buttons in example HTML
 document.querySelector("#connect").addEventListener('click', connect);
 document.querySelector("#disconnect").addEventListener('click', disconnect);
 document.querySelector("#approveDAIContract").addEventListener('click', approveDAIContract);
 document.querySelector("#updateUserDrips").addEventListener('click', updateDripsWithInputs);
+document.querySelector("#queryBySender").addEventListener('click', displayQueryBySenderDrips);
+document.querySelector("#queryByReceiver").addEventListener('click', displayQueryByReceiverDrips);
