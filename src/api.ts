@@ -1,72 +1,64 @@
+import { getDripsWithdrawable } from "./utils"
+
 const apiUrl = "https://api.thegraph.com/subgraphs/name/gh0stwheel/drips-on-rinkeby"
 
 const cacheAPISec = "3600" // string
 
-export class DripsSubgraphClient {
-  constructor(apiUrl) {
-    this.apiUrl = apiUrl;
+export async function getDripsBySender(address) {
+  const emptyConfig = {
+    balance: '0',
+    timestamp: '0',
+    receivers: [],
+    withdrawable: () => '0'
   }
-
-  async getDripsBySender(address) {
-    const emptyConfig = {
-      balance: '0',
-      timestamp: '0',
-      receivers: [],
-      withdrawable: () => '0'
-    }
-    try {
-      // fetch...
-      const resp = await query({ query: queryDripsConfigByID, variables: { id: address } })
-      console.log(apiUrl)
-      console.log('query response ' + JSON.stringify(resp))
-      const config = resp.data?.dripsConfigs[0]
-      if (config) {
-        config.withdrawable = () => getDripsWithdrawable(config)
-      }
-      return config || emptyConfig
-    } catch (e) {
-      console.error(e)
-      throw e
-    }
-  }
-}
-
-export async function getDripsByReceiver (receiver) {
   try {
-    const resp = await query({ query: queryDripsByReceiver, variables: { receiver, first: 100 } })
-    return resp.data?.dripsEntries || []
+    // fetch...
+    const resp = await query({ query: queryDripsConfigByID, variables: { id : address } })
+    console.log(apiUrl)
+    console.log('query response ' + JSON.stringify(resp))
+    return resp.data?.dripsConfigs[0]
   } catch (e) {
     console.error(e)
     throw e
   }
 }
 
-export async function getSplitsBySender (sender) {
+export async function getDripsByReceiver(address) {
+  const emptyConfig = {
+    balance: '0',
+    timestamp: '0',
+    receivers: [],
+    withdrawable: () => '0'
+  }
   try {
-    const resp = await query({ query: querySplitsBySender, variables: { sender, first: 100 } })
-    let entries = resp.data?.splitsEntries || []
-    // format
-    entries = entries.map(entry => ({
-      ...entry,
-      percent: entry.weight / state.splitsFractionMax * 100
-    }))
-    return entries
+    // fetch...
+    const resp = await query({ query: queryDripsByReceiver, variables: { receiver : address } })
+    console.log(apiUrl)
+    console.log('query response ' + JSON.stringify(resp))
+    return resp.data?.dripsEntries
   } catch (e) {
     console.error(e)
     throw e
   }
 }
 
-export async function getSplitsByReceiver (receiver) {
+async function getDripsUsingQuery(queryKey, address, subgraphQuery) {
+  const emptyConfig = {
+    balance: '0',
+    timestamp: '0',
+    receivers: [],
+    withdrawable: () => '0'
+  }
   try {
-    const resp = await query({ query: querySplitsByReceiver, variables: { receiver, first: 100 } })
-    let entries = resp.data?.splitsEntries || []
-    // format
-    entries = entries.map(entry => ({
-      ...entry,
-      percent: entry.weight / state.splitsFractionMax * 100
-    }))
-    return entries
+    // fetch...
+    const resp = await query({ query: subgraphQuery, variables: { [queryKey]: address } })
+    console.log(apiUrl)
+    console.log('query response ' + JSON.stringify(resp))
+    const config = resp.data?.dripsConfigs[0]
+    if (config) {
+      config.withdrawable = () => getDripsWithdrawable(config)
+    }
+    return config || emptyConfig
   } catch (e) {
     console.error(e)
     throw e

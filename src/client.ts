@@ -1,7 +1,14 @@
-import { ethers as Ethers, BigNumber as bn, utils } from 'ethers'
-import { deploy, RadicleRegistry, DAI, DripsToken, DaiDripsHub } from '../contracts'
+import { ethers as Ethers, utils } from 'ethers'
+import { RadicleRegistry, DAI, DripsToken, DaiDripsHub } from './contracts';
 
 export class DripsClient {
+  provider: any;
+  signer: any;
+  walletProvider: any;
+  address: any;
+  networkId: any;
+
+
   constructor(provider) {
     this.provider = provider
     this.signer = undefined
@@ -19,7 +26,7 @@ export class DripsClient {
   }
 
   getRadicleRegistryContract () {
-    return new Ethers.Contract(RadicleRegistry.address, RadicleRegistry.abi, provider)
+    return new Ethers.Contract(RadicleRegistry.address, RadicleRegistry.abi, this.provider)
   }
 
   getProjectContract (address) {
@@ -52,7 +59,7 @@ export class DripsClient {
 
       // get all events
       console.log('---start---')
-      let events = await this.getHubContract().queryFilter('DripsUpdated(address,uint128,(address,uint128)[])')
+      let events = await this.getHubContract().queryFilter('DripsUpdated(address,uint128,(address,uint128)[])' as any)
       // filter by my address
       events = events.filter(event => event.args[0].toLowerCase() === "0x0630a42785B8A92205A492B3092279529990ED0C".toLowerCase())
       console.log('timestamp ' + (await events[0].getBlock()).timestamp)
@@ -61,7 +68,7 @@ export class DripsClient {
 
       return true
     } catch (e) {
-      
+
       console.error('@connect', e)
 
       // clear wallet in case
@@ -88,9 +95,9 @@ export class DripsClient {
     this.walletProvider.on('accountsChanged', accounts => {
       console.log('accountsChanged', accounts)
       if (!accounts.length) {
-        disconnect()
+        this.disconnect()
       }
-      signIn(accounts[0])
+      this.signIn(accounts[0])
     })
 
     // changed network
@@ -103,7 +110,7 @@ export class DripsClient {
     // random disconnection? (doesn't fire on account disconnect)
     this.walletProvider.on('disconnect', error => {
       console.error('disconnected?', error)
-      disconnect()
+      this.disconnect()
     })
   }
 
@@ -119,7 +126,7 @@ export class DripsClient {
   signOut () {
     this.address = null
     this.networkId = null
-    console.log('signOut() called') 
+    console.log('signOut() called')
   }
 
   async setupFallbackProvider () {
@@ -127,22 +134,25 @@ export class DripsClient {
       if (window.ethereum) {
         // metamask/browser
         this.provider = new Ethers.providers.Web3Provider(window.ethereum)
-      } else {
-        // infura fallback
-        this.provider = new Ethers.getDefaultProvider(deployNetwork.infura)
       }
+      // else {
+      //   // infura fallback
+      //   this.provider = Ethers.getDefaultProvider(deployNetwork.infura)
+      // }
 
       return true
     } catch (e) {
       console.error(e)
     }
+
+    return false;
   }
 
   async approveDAIContract () {
     try {
       if (!this.signer) throw 'DripsClient must be connected before approving DAI'
 
-      const contract = new Ethers.Contract(DAI.address, DAI.abi, provider)
+      const contract = new Ethers.Contract(DAI.address, DAI.abi, this.provider)
       const contractSigner = contract.connect(this.signer)
 
       // approve max amount
@@ -177,32 +187,32 @@ export class DripsClient {
 
   // Check how much DAI an address is allowed to spend on behalf of the signed-in user
   async getAllowance (spendingAddress) {
-    if (!address) throw "Must call connect() before calling getAllowance()"
-    
+    if (!this.address) throw "Must call connect() before calling getAllowance()"
+
     const daiContract = this.getDAIContract()
     return daiContract.allowance(this.address, spendingAddress)
   }
-  
+
   validateAddressInput = input => {
     return new Promise((resolve, reject) => {
       if (utils.isAddress(input)) {
         return resolve(input)
       }
-  
+
       // !! not even ENS
       if (!input.endsWith('.eth')) {
         return reject(new Error(`"${input}" is neither an Ethereum address or ENS name (ends in .eth).`))
       }
-      
+
       // check ENS...
-      resolveENS(input)
-        .then(addr => {
-          if (!addr) {
-            reject(new Error(`"${input}" does not resolve to an Ethereum address`))
-          }
-          resolve(addr)
-        })
-        .catch(reject)
+      // this.resolveENS(input)
+      //   .then(addr => {
+      //     if (!addr) {
+      //       reject(new Error(`"${input}" does not resolve to an Ethereum address`))
+      //     }
+      //     resolve(addr)
+      //   })
+      //   .catch(reject)
     })
   }
 
@@ -227,5 +237,3 @@ export class DripsClient {
     }*/
   }
 }
-
-

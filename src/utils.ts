@@ -2,7 +2,7 @@ import { BigNumber as bn, constants, utils } from 'ethers'
 
 export const oneMonth = 30 * 24 * 60 * 60
 
-export const ipfsUrl = hash => import.meta.env.VITE_APP_IPFS_GATEWAY + '/ipfs/' + hash
+// export const ipfsUrl = hash => import.meta.env.VITE_APP_IPFS_GATEWAY + '/ipfs/' + hash
 
 // clip to nearest hundredth (dont round up)
 export const round = (num, dec = 2) => (Math.floor(num * 100) / 100).toFixed(dec)
@@ -21,10 +21,6 @@ export const toDAI = (wei, frmt = 'pretty', roundTo) => {
   if (frmt === 'exact') {
     return dai
   }
-  // tiny amount
-  if (dai > 0 && dai < 0.01) {
-    return '<0.01'
-  }
   // rounding
   return round(dai, roundTo)
 }
@@ -33,7 +29,7 @@ export const toDAIPerMo = (wei) => {
   wei = bn.isBigNumber(wei) ? wei : bn.from(wei)
   const dai = utils.formatEther(wei.mul(oneMonth))
   // round to nearest hundredth
-  return Math.round(dai * 100) / 100
+  return Math.round(parseFloat(dai) * 100) / 100
 }
 
 export const toWeiPerSec = (dai = 0) => {
@@ -46,103 +42,103 @@ export const toWeiPerSec = (dai = 0) => {
  * format drips for contract method input
  * @param drips [{ address, percent }]
 */
-export const formatDrips = (drips) => {
-  drips = drips || []
-  let dripFraction = 0
-  let receiverWeights = []
+// export const formatDrips = (drips) => {
+//   drips = drips || []
+//   let dripFraction = 0
+//   let receiverWeights = []
 
-  const hasDrips = drips.length && drips.find(drip => drip.percent > 0 && drip.address.length)
+//   const hasDrips = drips.length && drips.find(drip => drip.percent > 0 && drip.address.length)
 
-  if (hasDrips) {
-    // figure out drip fraction from sum of drips' weights
-    const dripFractionMax = 1000000
-    const dripsPercentSum = drips.reduce((acc, cur) => acc + (cur.percent || 0), 0)
-    dripFraction = parseInt(dripsPercentSum / 100 * dripFractionMax)
+//   if (hasDrips) {
+//     // figure out drip fraction from sum of drips' weights
+//     const dripFractionMax = 1000000
+//     const dripsPercentSum = drips.reduce((acc, cur) => acc + (cur.percent || 0), 0)
+//     dripFraction = parseInt(dripsPercentSum / 100 * dripFractionMax)
 
-    // format as array
-    receiverWeights = drips.map(drip => {
-      // weight of this receiver against the total dripFraction amount, as integer (max 10K)
-      const amtPerSec = parseInt((drip.percent / 100 * dripFractionMax) / dripFraction * 1000)
-      return [
-        drip.address, // receiver
-        amtPerSec
-      ]
-    })
+//     // format as array
+//     receiverWeights = drips.map(drip => {
+//       // weight of this receiver against the total dripFraction amount, as integer (max 10K)
+//       const amtPerSec = parseInt((drip.percent / 100 * dripFractionMax) / dripFraction * 1000)
+//       return [
+//         drip.address, // receiver
+//         amtPerSec
+//       ]
+//     })
 
-    // sort by address alphabetical
-    receiverWeights = receiverWeights.sort((a, b) => {
-      a = a[0].toUpperCase()
-      b = b[0].toUpperCase()
-      return (a < b) ? -1 : (a > b) ? 1 : 0
-    })
-  }
+//     // sort by address alphabetical
+//     receiverWeights = receiverWeights.sort((a, b) => {
+//       a = a[0].toUpperCase()
+//       b = b[0].toUpperCase()
+//       return (a < b) ? -1 : (a > b) ? 1 : 0
+//     })
+//   }
 
-  return [
-    dripFraction,
-    receiverWeights
-  ]
-  // "empty" drips = [0, []]
-}
+//   return [
+//     dripFraction,
+//     receiverWeights
+//   ]
+//   // "empty" drips = [0, []]
+// }
 
 /*
  * format splits for contract method input (no dripFraction :)
  * @param splits [{ address, percent }]
 */
-export const formatSplits = (splits) => {
-  splits = splits || []
-  let receivers = []
-  const splitFractionMax = 1000000
+// export const formatSplits = (splits) => {
+//   splits = splits || []
+//   let receivers = []
+//   const splitFractionMax = 1000000
 
-  const hasDrips = splits.length && splits.find(split => split.percent > 0 && split.address.length)
+//   const hasDrips = splits.length && splits.find(split => split.percent > 0 && split.address.length)
 
-  if (hasDrips) {
-    // format as array
-    receivers = splits.map(split => {
-      const amtPerSec = parseInt(split.percent / 100 * splitFractionMax)
-      return [
-        split.address, // receiver
-        amtPerSec
-      ]
-    })
+//   if (hasDrips) {
+//     // format as array
+//     receivers = splits.map(split => {
+//       const amtPerSec = parseInt(split.percent / 100 * splitFractionMax)
+//       return [
+//         split.address, // receiver
+//         amtPerSec
+//       ]
+//     })
 
-    // sort by address alphabetical
-    receivers = receivers.sort((a, b) => {
-      a = a[0].toUpperCase()
-      b = b[0].toUpperCase()
-      return (a < b) ? -1 : (a > b) ? 1 : 0
-    })
-  }
+//     // sort by address alphabetical
+//     receivers = receivers.sort((a, b) => {
+//       a = a[0].toUpperCase()
+//       b = b[0].toUpperCase()
+//       return (a < b) ? -1 : (a > b) ? 1 : 0
+//     })
+//   }
 
-  return receivers
-}
+//   return receivers
+// }
 
-export function validateSplits (splits, provider) {
-  splits = splits || []
-  const validate = async () => {
-    // validate each address...
-    for (var i = 0; i < splits.length; i++) {
-      if (!utils.isAddress(splits[i][0])) {
-        // !! not an ENS
-        if (!splits[i][0].endsWith('.eth')) {
-          throw new Error(`Invalid recipient: "${splits[i][0]}" is not an Ethereum address or ENS name (must end in .eth).`)
-        }
-        // resolve ENS name...
-        const address = await provider.resolveName(splits[i][0])
+// export function validateSplits (splits, provider) {
+//   splits = splits || []
+//   const validate = async () => {
+//     // validate each address...
+//     for (var i = 0; i < splits.length; i++) {
+//       if (!utils.isAddress(splits[i][0])) {
+//         // !! not an ENS
+//         if (!splits[i][0].endsWith('.eth')) {
+//           throw new Error(`Invalid recipient: "${splits[i][0]}" is not an Ethereum address or ENS name (must end in .eth).`)
+//         }
+//         // resolve ENS name...
+//         const address = await provider.resolveName(splits[i][0])
 
-        if (!address) {
-          throw new Error(`Invalid recipient: "${splits[i][0]}" does not resolve to an Ethereum address.`)
-        }
+//         if (!address) {
+//           throw new Error(`Invalid recipient: "${splits[i][0]}" does not resolve to an Ethereum address.`)
+//         }
 
-        // replace ens with address
-        splits[i][0] = address
-      }
-    }
+//         // replace ens with address
+//         splits[i][0] = address
+//       }
+//     }
 
-    return splits
-  }
+//     return splits
+//   }
 
-  return new Promise((resolve, reject) => validate().then(resolve).catch(reject))
-}
+//   return new Promise((resolve, reject) => validate().then(resolve).catch(reject))
+// }
 
 export function getDripPctFromAmts (amts) {
   if (!amts) return 0
@@ -220,15 +216,15 @@ export const formatDripsEvents = events => {
 }
 
 // format split events for DripRow.vue
-export const formatSplitsEvents = events => {
-  return events.map(e => {
-    let percent = e.args[1].reduce((acc, cur) => acc + cur[1], 0) / store.state.splitsFractionMax * 100
-    percent = percent > 0 && !parseInt(percent) ? '<1%' : parseInt(percent) // parseFloat(percent.toFixed(2))
-    return {
-      blockNumber: e.blockNumber,
-      sender: e.args[0],
-      receiver: e.args[1].map(rec => rec[0]),
-      percent
-    }
-  })
-}
+// export const formatSplitsEvents = events => {
+//   return events.map(e => {
+//     let percent = e.args[1].reduce((acc, cur) => acc + cur[1], 0) / store.state.splitsFractionMax * 100
+//     percent = percent > 0 && !parseInt(percent) ? '<1%' : parseInt(percent) // parseFloat(percent.toFixed(2))
+//     return {
+//       blockNumber: e.blockNumber,
+//       sender: e.args[0],
+//       receiver: e.args[1].map(rec => rec[0]),
+//       percent
+//     }
+//   })
+// }
