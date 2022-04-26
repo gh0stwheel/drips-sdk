@@ -80,7 +80,7 @@
 
       // Wait for the transaction to confirm
       responseText.textContent = 'Waiting for the transaction to be confirmed'
-      txReceipt = await transaction.wait()
+      let txReceipt = await transaction.wait()
       responseText.textContent = `Address has been approved in DAI contract!`
     } catch (e) {
       console.error(e)
@@ -90,7 +90,7 @@
   async function updateDripsWithInputs () {
     try {
 
-      let topUpDai = document.getElementById("topUpDai").value
+      let topUpDai = (<HTMLInputElement>document.getElementById("topUpDai")).value
       console.log('topUpDai -->' + topUpDai)
       const topUpWei = toWei(Number(topUpDai))
 
@@ -105,9 +105,7 @@
 
         // !! below allowance
         if (allowance.lt(topUpWei)) {
-          responseText.value = 'You must first approve the contract to be able to withdraw your DAI.'
-          approved.value = false
-          approveVisible.value = true
+          responseText.value = 'You do not have enough DAI, or must first approve DAI for your addres.'
           return false
         }
       }
@@ -128,14 +126,13 @@
       // validate receivers
 
       // TODO -- need to generalize to support multiple drip receivers and then delete the commented code below
-      let dripToAddressInput = document.getElementById("dripToAddress").value
-      let dripToDAIInput = document.getElementById("dripToDAI").value
-
+      let dripToAddressInput = (<HTMLInputElement>document.getElementById("dripToAddress")).value
+      let dripToDAIInput = (<HTMLInputElement>document.getElementById("dripToDAI")).value
 
       let newReceivers = []
       if (dripToAddressInput !== "" && dripToDAIInput !== "") {
         const dripToAddress = dripsClient.validateAddressInput(dripToAddressInput)
-        const amtWeiPerSec = toWeiPerSec(dripToDAIInput)
+        const amtWeiPerSec = toWeiPerSec(parseInt(dripToDAIInput))
         newReceivers.push([dripToAddress, amtWeiPerSec])
       }
 
@@ -205,7 +202,7 @@
       const approvedDiv = document.getElementById('daiApproved')
       let daiApproved = null
       if (dripsClient && dripsClient.address) {
-        daiApproved = toDAI(await dripsClient.getAllowance(dripsClient.getHubContract().address))
+        daiApproved = toDAI(await dripsClient.getAllowance(dripsClient.getHubContract().address), 'pretty', 2)
       }
       if (daiApproved) {
         approvedDiv.textContent = 'DAI Approved: ' + daiApproved
@@ -236,7 +233,7 @@
   }
 
   async function displayDripsQueryResult (inputField, outputDivId, subgraphClientFunction) {
-    let queryAddressInput = document.getElementById(inputField).value
+    let queryAddressInput = (<HTMLInputElement>document.getElementById(inputField)).value
 
     const div = document.getElementById(outputDivId);
     if (queryAddressInput && queryAddressInput !== "") {
@@ -265,7 +262,6 @@
     <div class="column">
       <h1>DripsClient Example</h1>
       <div id="responseText" style="color: red; padding-bottom: 20px;"></div>
-      <script type="module" src="src/examples.js"></script>
       <button id="connect">Connect</button>
       <button id= "disconnect">Disconnect</button>
       <button id= "approveDAIContract">Approve DAI</button>
