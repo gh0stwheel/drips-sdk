@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { DripsClient, getDripsBySender, getDripsByReceiver, toWei,toWeiPerSec,toDAI } from 'drips-sdk'
+  import { DripsClient, getDripsBySender, getSplitsBySender, getDripsByReceiver, toWei, toWeiPerSec, toDAI } from 'drips-sdk'
   import { ethers as Ethers, BigNumber as bn } from 'ethers'
   import Web3Modal from 'web3modal'
   // TODO: https://github.com/WalletConnect/walletconnect-monorepo/issues/341
@@ -48,6 +48,7 @@
 
       displayAddressNetworkAndApproval()
       displayUserDrips()
+      displayUserSplits()
 
     } catch (e) {
       console.log(e)
@@ -67,6 +68,7 @@
 
     displayAddressNetworkAndApproval()
     displayUserDrips()
+    displayUserSplits()
   }
 
   async function approveDAIContract () {
@@ -90,20 +92,18 @@
   async function updateDripsWithInputs () {
     try {
 
-      let topUpDai = (<HTMLInputElement>document.getElementById("topUpDai")).value
-      console.log('topUpDai -->' + topUpDai)
+      let topUpDai = (document.getElementById("topUpDai")).value
       const topUpWei = toWei(Number(topUpDai))
 
       if (!dripsClient || !dripsClient.address) throw 'Please connect the wallet first'
 
-      // check allowance if top-up
-      // TODO -- review all of this code and the prompts/messages
+      // check how much DAI is in wallet, if topping-up
       if (topUpWei.gt(0)) {
-        const allowance = await dripsClient.getAllowance(dripsClient.getAddress())
+        const allowance = await dripsClient.getAllowance()
 
-        console.log('allowance -->' + allowance)
+        console.log('allowance for address ' + dripsClient.getAddress() + ' --> ' + allowance)
 
-        // !! below allowance
+        // display an error if the user doesn't have enough DAI
         if (allowance.lt(topUpWei)) {
           responseText.value = 'You do not have enough DAI, or must first approve DAI for your addres.'
           return false
@@ -126,8 +126,8 @@
       // validate receivers
 
       // TODO -- need to generalize to support multiple drip receivers and then delete the commented code below
-      let dripToAddressInput = (<HTMLInputElement>document.getElementById("dripToAddress")).value
-      let dripToDAIInput = (<HTMLInputElement>document.getElementById("dripToDAI")).value
+      let dripToAddressInput = (document.getElementById("dripToAddress1")).value
+      let dripToDAIInput = (document.getElementById("dripToDAI1")).value
 
       let newReceivers = []
       if (dripToAddressInput !== "" && dripToDAIInput !== "") {
@@ -159,19 +159,15 @@
         topUpWei,
         newReceivers )
 
-      responseText.textContent = 'Waiting for the transaction to confirm for tx: ' + transaction
-
-      // Wait for tx...
-      responseText.value = { message: 'Waiting for transaction confirmation...' }
+      responseText.textContent = 'Waiting for the transaction to confirm...'
       txReceipt = await transaction.wait()
-
-      console.log('Confirmed!')
 
       // Confirmed!
       responseText.textContent = 'Confirmed!'
 
       // Refresh drips config JSON
-      displayUserDrips()
+      const div = document.getElementById('userDripsJSON');
+      div.textContent = 'Drips JSON will take a few moments to be updated in the subgraph. Wait a few moments and then disconnect and then reconnect to see the updated JSON.';
 
     } catch (e) {
       console.log(e)
@@ -218,7 +214,19 @@
       console.log(dripsClient.getAddress())
       let userDripsJson = await getDripsBySender(dripsClient.getAddress().toLowerCase())
       console.log(userDripsJson)
-      div.textContent = JSON.stringify(userDripsJson);
+      div.textContent = 'Drips JSON: ' + JSON.stringify(userDripsJson);
+    } else {
+      div.textContent = ""
+    }
+  }
+
+  async function displayUserSplits () {
+    const div = document.getElementById('userSplitsJSON');
+    if (dripsClient && dripsClient.address) {
+      console.log(dripsClient.getAddress())
+      let userDripsJson = await getSplitsBySender(dripsClient.getAddress().toLowerCase())
+      console.log(userDripsJson)
+      div.textContent = 'Splits JSON: ' + JSON.stringify(userDripsJson);
     } else {
       div.textContent = ""
     }
@@ -233,7 +241,7 @@
   }
 
   async function displayDripsQueryResult (inputField, outputDivId, subgraphClientFunction) {
-    let queryAddressInput = (<HTMLInputElement>document.getElementById(inputField)).value
+    let queryAddressInput = (document.getElementById(inputField)).value
 
     const div = document.getElementById(outputDivId);
     if (queryAddressInput && queryAddressInput !== "") {
@@ -265,7 +273,6 @@
       <button id="connect">Connect</button>
       <button id= "disconnect">Disconnect</button>
       <button id= "approveDAIContract">Approve DAI</button>
-      <button id= "updateUserDrips">Update Drips</button>
       <p> </p>
       <h2>Wallet/Network Details</h2>
       <div id="address">Address: [Not Connected]</div>
@@ -274,13 +281,15 @@
       <p> </p>
       <h2>New Drips Config Input</h2>
       <div>Top-Up/Withdrawal: <input type="text" id="topUpDai" value="0"></div>
-      <div><p></p><h3>Drips Entries:</h3></div>
-      <div>1. Receiver Address: <input size="46" type="text" id="dripToAddress"/>
-        <input type="text" id="dripToDAI"/>
-      </div>
+      <div><p></p><h3>Drips Entries (address / DAI amount):</h3></div>
+      
+      <div>1. <input size="46" type="text" id="dripToAddress1"/><input type="text" id="dripToDAI1"/></div>
+      <div>2. <input size="46" type="text" id="dripToAddress2"/><input type="text" id="dripToDAI2"/></div>
+      <div>3. <input size="46" type="text" id="dripToAddress3"/><input type="text" id="dripToDAI3"/></div>
+      <button id= "updateUserDrips">Update Drips</button>
 
-      <h2>User's Current Drips JSON Records</h2>
-      <div id="userDripsJSON">[Please connect your wallet above]</div>
+      <h2>User's Current Drips/Splits JSON Records</h2>
+      <div id="userDripsJSON"></div><p></p>
       <div id="userSplitsJSON"></div>
     </div>
     <div class="column">

@@ -1,8 +1,7 @@
 import { BigNumber as bn, constants, utils } from 'ethers'
 
 export const oneMonth = 30 * 24 * 60 * 60
-
-// export const ipfsUrl = hash => import.meta.env.VITE_APP_IPFS_GATEWAY + '/ipfs/' + hash
+export const splitsFractionMax = 1000000
 
 // clip to nearest hundredth (dont round up)
 export const round = (num, dec = 2) => (Math.floor(num * 100) / 100).toFixed(dec)
@@ -112,33 +111,14 @@ export const toWeiPerSec = (dai = 0) => {
 //   return receivers
 // }
 
-// export function validateSplits (splits, provider) {
-//   splits = splits || []
-//   const validate = async () => {
-//     // validate each address...
-//     for (var i = 0; i < splits.length; i++) {
-//       if (!utils.isAddress(splits[i][0])) {
-//         // !! not an ENS
-//         if (!splits[i][0].endsWith('.eth')) {
-//           throw new Error(`Invalid recipient: "${splits[i][0]}" is not an Ethereum address or ENS name (must end in .eth).`)
-//         }
-//         // resolve ENS name...
-//         const address = await provider.resolveName(splits[i][0])
-
-//         if (!address) {
-//           throw new Error(`Invalid recipient: "${splits[i][0]}" does not resolve to an Ethereum address.`)
-//         }
-
-//         // replace ens with address
-//         splits[i][0] = address
-//       }
-//     }
-
-//     return splits
-//   }
-
-//   return new Promise((resolve, reject) => validate().then(resolve).catch(reject))
-// }
+export function validateSplits (splits) {
+  splits = splits || []
+  for (var i = 0; i < splits.length; i++) {
+      if (!utils.isAddress(splits[i][0])) {
+        throw new Error(`Invalid recipient: "${splits[i][0]}" is not an Ethereum address`)
+      }
+  }
+}
 
 export function getDripPctFromAmts (amts) {
   if (!amts) return 0

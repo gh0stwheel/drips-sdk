@@ -1,10 +1,10 @@
-import { getDripsWithdrawable } from "./utils"
+import { splitsFractionMax } from "./utils"
 
 const apiUrl = "https://api.thegraph.com/subgraphs/name/gh0stwheel/drips-on-rinkeby"
 
 const cacheAPISec = "3600" // string
 
-export async function getDripsBySender(address) {
+export async function getDripsBySender (address) {
   const emptyConfig = {
     balance: '0',
     timestamp: '0',
@@ -14,8 +14,6 @@ export async function getDripsBySender(address) {
   try {
     // fetch...
     const resp = await query({ query: queryDripsConfigByID, variables: { id : address } })
-    console.log(apiUrl)
-    console.log('query response ' + JSON.stringify(resp))
     return resp.data?.dripsConfigs[0]
   } catch (e) {
     console.error(e)
@@ -23,7 +21,7 @@ export async function getDripsBySender(address) {
   }
 }
 
-export async function getDripsByReceiver(address) {
+export async function getDripsByReceiver (address) {
   const emptyConfig = {
     balance: '0',
     timestamp: '0',
@@ -32,9 +30,7 @@ export async function getDripsByReceiver(address) {
   }
   try {
     // fetch...
-    const resp = await query({ query: queryDripsByReceiver, variables: { receiver : address } })
-    console.log(apiUrl)
-    console.log('query response ' + JSON.stringify(resp))
+    const resp = await query ({ query: queryDripsByReceiver, variables: { receiver : address } })
     return resp.data?.dripsEntries
   } catch (e) {
     console.error(e)
@@ -42,7 +38,39 @@ export async function getDripsByReceiver(address) {
   }
 }
 
-export async function query( {query, variables} ) {
+export async function getSplitsBySender ( address ) {
+  try {
+    const resp = await query({ query: querySplitsBySender, variables: { address, first: 100 } })
+    let entries = resp.data?.splitsEntries || []
+    // format
+    entries = entries.map(entry => ({
+      ...entry,
+      percent: entry.weight / splitsFractionMax * 100
+    }))
+    return entries
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
+
+export async function getSplitsByReceiver ( address ) {
+  try {
+    const resp = await query({ query: querySplitsByReceiver, variables: { address, first: 100 } })
+    let entries = resp.data?.splitsEntries || []
+    // format
+    entries = entries.map(entry => ({
+      ...entry,
+      percent: entry.weight / splitsFractionMax * 100
+    }))
+    return entries
+  } catch (e) {
+    console.error(e)
+    throw e
+  }
+}
+
+export async function query ( {query, variables} ) {
   const id = btoa(JSON.stringify({ query, variables }))
   try {
     if (!apiUrl) {
@@ -50,7 +78,7 @@ export async function query( {query, variables} ) {
     }
 
     // fetch new...
-    console.log('query --> ' + JSON.stringify({ query, variables }))
+    //console.log('query --> ' + JSON.stringify({ query, variables }))
     const resp = await fetch(apiUrl, {
       method: 'POST',
       headers: {

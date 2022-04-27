@@ -1,5 +1,6 @@
 import { ethers as Ethers, utils } from 'ethers'
-import { RadicleRegistry, DAI, DripsToken, DaiDripsHub } from './contracts';
+import { RadicleRegistry, DAI, DripsToken, DaiDripsHub } from './contracts'
+import { validateSplits } from './utils'
 
 export class DripsClient {
   provider: any;
@@ -55,17 +56,6 @@ export class DripsClient {
 
       this.listenToWalletProvider()
 
-      console.log('connected to network ' + this.networkId + '!')
-
-      // get all events
-      console.log('---start---')
-      let events = await this.getHubContract().queryFilter('DripsUpdated(address,uint128,(address,uint128)[])' as any)
-      // filter by my address
-      events = events.filter(event => event.args[0].toLowerCase() === "0x0630a42785B8A92205A492B3092279529990ED0C".toLowerCase())
-      console.log('timestamp ' + (await events[0].getBlock()).timestamp)
-      console.log(events)
-      console.log('---end---')
-
       return true
     } catch (e) {
 
@@ -79,7 +69,6 @@ export class DripsClient {
     }
   }
 
-  // Disconnect the wallet
   disconnect () {
     this.signOut()
     this.setupFallbackProvider()
@@ -126,7 +115,6 @@ export class DripsClient {
   signOut () {
     this.address = null
     this.networkId = null
-    console.log('signOut() called')
   }
 
   async setupFallbackProvider () {
@@ -165,9 +153,11 @@ export class DripsClient {
     }
   }
 
-  async updateUserDrips (lastUpdate, lastBalance, currentReceivers, balanceDelta, newReceivers ) {
+  async updateUserDrips (lastUpdate:number, lastBalance:number, currentReceivers:string, balanceDelta:number, newReceivers:string) {
     try {
       if (!this.signer) throw "Not connected to wallet"
+
+      // TODO -- here we should validate that the new receivers are all valid Ethereum addresses, similar to validateSplits below
 
       const contract = this.getHubContract()
       const contractSigner = contract.connect(this.signer)
@@ -185,55 +175,28 @@ export class DripsClient {
     }
   }
 
+  async updateUserSplits (currentReceivers, newReceivers, projectAddress) {
+    try {
+      if (!this.signer) throw "Not connected to wallet"
+      
+      validateSplits(newReceivers)
+
+      const contract = this.getHubContract()
+      const contractSigner = contract.connect(this.signer)
+      // submit
+      return contractSigner['setSplits'](currentReceivers, newReceivers)
+    } catch (e) {
+      console.error(e)
+      throw e
+    }
+  }
+
   // Check how much DAI an address is allowed to spend on behalf of the signed-in user
-  async getAllowance (spendingAddress) {
+  async getAllowance () {
     if (!this.address) throw "Must call connect() before calling getAllowance()"
 
     const daiContract = this.getDAIContract()
-    return daiContract.allowance(this.address, spendingAddress)
-  }
-
-  validateAddressInput = input => {
-    return new Promise((resolve, reject) => {
-      if (utils.isAddress(input)) {
-        return resolve(input)
-      }
-
-      // !! not even ENS
-      if (!input.endsWith('.eth')) {
-        return reject(new Error(`"${input}" is neither an Ethereum address or ENS name (ends in .eth).`))
-      }
-
-      // check ENS...
-      // this.resolveENS(input)
-      //   .then(addr => {
-      //     if (!addr) {
-      //       reject(new Error(`"${input}" does not resolve to an Ethereum address`))
-      //     }
-      //     resolve(addr)
-      //   })
-      //   .catch(reject)
-    })
-  }
-
-  async resolveENS ({ state, commit, dispatch }, ens) {
-    // TODO -- get ENS resolution working again
-    /*
-    try {
-      // saved ?
-      let address = Object.keys(state.addresses).find(key => ens && state.addresses[key].ens === ens)
-      if (address) return address
-      // resolve...
-      if (!provider) await dispatch('init')
-      address = await provider.resolveName(ens)
-      if (address) {
-        // save if resolved...
-        commit('SAVE_ADDRESS', { address, ens })
-      }
-      return address
-    } catch (e) {
-      console.error(e)
-      return null
-    }*/
+    //console.log('this.address=' + this.address + ' spendingAddress=' + DaiDripsHub.address)
+    return daiContract.allowance(this.address, DaiDripsHub.address)
   }
 }
