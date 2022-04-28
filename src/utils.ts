@@ -1,4 +1,4 @@
-import { BigNumber as bn, constants, utils } from 'ethers'
+import { BigNumber as bn, constants, ethers, utils } from 'ethers'
 
 export const oneMonth = 30 * 24 * 60 * 60
 export const splitsFractionMax = 1000000
@@ -83,33 +83,33 @@ export const toWeiPerSec = (dai = 0) => {
  * format splits for contract method input (no dripFraction :)
  * @param splits [{ address, percent }]
 */
-// export const formatSplits = (splits) => {
-//   splits = splits || []
-//   let receivers = []
-//   const splitFractionMax = 1000000
+export const formatSplits = (splits) => {
+  splits = splits || []
+  let receivers = []
+  const splitFractionMax = 1000000
 
-//   const hasDrips = splits.length && splits.find(split => split.percent > 0 && split.address.length)
+  const hasDrips = splits.length && splits.find(split => split.percent > 0 && split.address.length)
 
-//   if (hasDrips) {
-//     // format as array
-//     receivers = splits.map(split => {
-//       const amtPerSec = parseInt(split.percent / 100 * splitFractionMax)
-//       return [
-//         split.address, // receiver
-//         amtPerSec
-//       ]
-//     })
+  if (hasDrips) {
+    // format as array
+    receivers = splits.map(split => {
+      const amtPerSec = parseInt(split.percent) / 100 * splitFractionMax
+      return [
+        split.address, // receiver
+        amtPerSec
+      ]
+    })
 
-//     // sort by address alphabetical
-//     receivers = receivers.sort((a, b) => {
-//       a = a[0].toUpperCase()
-//       b = b[0].toUpperCase()
-//       return (a < b) ? -1 : (a > b) ? 1 : 0
-//     })
-//   }
+    // sort by address alphabetical
+    receivers = receivers.sort((a, b) => {
+      a = a[0].toUpperCase()
+      b = b[0].toUpperCase()
+      return (a < b) ? -1 : (a > b) ? 1 : 0
+    })
+  }
 
-//   return receivers
-// }
+  return receivers
+}
 
 export function validateSplits (splits) {
   splits = splits || []
@@ -208,3 +208,9 @@ export const formatDripsEvents = events => {
 //     }
 //   })
 // }
+
+export const validateAddressInput = input => {
+  if (!utils.isAddress(input)) {
+    throw new Error(`"${input}" does not resolve to an Ethereum address`)
+  }
+}

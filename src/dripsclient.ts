@@ -175,7 +175,7 @@ export class DripsClient {
     }
   }
 
-  async updateUserSplits (currentReceivers, newReceivers, projectAddress) {
+  async updateUserSplits (currentReceivers, newReceivers) {
     try {
       if (!this.signer) throw "Not connected to wallet"
       

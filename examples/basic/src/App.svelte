@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { DripsClient, getDripsBySender, getSplitsBySender, getDripsByReceiver, toWei, toWeiPerSec, toDAI } from 'drips-sdk'
+  import { DripsClient, getDripsBySender, getSplitsBySender, getDripsByReceiver, toWei, toWeiPerSec, toDAI, formatSplits } from 'drips-sdk'
   import { ethers as Ethers, BigNumber as bn } from 'ethers'
   import Web3Modal from 'web3modal'
   // TODO: https://github.com/WalletConnect/walletconnect-monorepo/issues/341
   import WalletConnectProvider from '@walletconnect/web3-provider/dist/umd/index.min.js'
+import { getAddress } from 'ethers/lib/utils';
 
   // Define network-related constants
   const networks = {
@@ -169,6 +170,45 @@
       const div = document.getElementById('userDripsJSON');
       div.textContent = 'Drips JSON will take a few moments to be updated in the subgraph. Wait a few moments and then disconnect and then reconnect to see the updated JSON.';
 
+    } catch (e) {
+      console.log(e)
+      console.log(e.stack)
+      responseText.textContent = e.data?.message || e.message || e
+    }
+  }
+
+  async function updateSplitsWithInputs () {
+    try {
+      if (!dripsClient || !dripsClient.address) throw 'Please connect the wallet first'
+
+      // resolve receiver inputs
+      let newReceivers = []
+      let splitToAddressInput = (document.getElementById("splitToAddress1")).value
+      let splitToPercentInput = (document.getElementById("splitToPercent1")).value
+
+      if (splitToAddressInput !== "" && splitToPercentInput !== "") {
+        const dripToAddress = dripsClient.validateAddressInput(splitToAddressInput)
+        
+        newReceivers.push({dripToAddress, percent: splitToPercentInput})
+      }
+
+      // format newReceivers param
+      newReceivers = formatSplits(newReceivers)
+
+      // params
+      const currentReceivers = getSplitsBySender(dripsClient.address)
+      
+      responseText.textContent = 'Confirm the transaction in your wallet.'
+      let tx = await dripsClient.updateAddressSplit(currentReceivers, newReceivers)
+      console.log('update splits tx', tx.value)
+
+      // wait for tx...
+      txMsg.value = { message: 'Waiting for transaction confirmation...' }
+      txReceipt.value = await tx.value.wait()
+
+      // success
+      emit('updated')
+      txMsg.value = { status: 1, message: 'Confirmed! View your drips on your profile!' }
     } catch (e) {
       console.log(e)
       console.log(e.stack)
